@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// MongoRepository is a generic repository for MongoDB operations
 type MongoRepository[T any] struct {
 	collection   *mongo.Collection
 	idFieldIndex int
@@ -25,7 +24,6 @@ type QueryConfig struct {
 	Pageable   []int
 }
 
-// NewMongoRepository creates a new MongoRepository
 func NewMongoRepository[T any](collection *mongo.Collection) (*MongoRepository[T], error) {
 	repo := &MongoRepository[T]{
 		collection: collection,
@@ -39,7 +37,6 @@ func NewMongoRepository[T any](collection *mongo.Collection) (*MongoRepository[T
 	return repo, nil
 }
 
-// setIdField finds the field with bson:"_id" tag
 func (r *MongoRepository[T]) setIdField() error {
 	var dummy T
 	t := reflect.TypeOf(dummy)
@@ -55,7 +52,6 @@ func (r *MongoRepository[T]) setIdField() error {
 	return errors.New("type does not have a field with bson:\"_id\" tag")
 }
 
-// ensureIndexes creates indexes based on struct tags
 func (r *MongoRepository[T]) ensureIndexes() error {
 	var dummy T
 	t := reflect.TypeOf(dummy)
@@ -83,7 +79,6 @@ func (r *MongoRepository[T]) ensureIndexes() error {
 	return nil
 }
 
-// FindAll retrieves all documents in the collection
 func (r *MongoRepository[T]) FindAll(ctx context.Context) ([]T, error) {
 	var results []T
 	cursor, err := r.collection.Find(ctx, bson.M{})
@@ -95,26 +90,37 @@ func (r *MongoRepository[T]) FindAll(ctx context.Context) ([]T, error) {
 	return results, err
 }
 
-// FindById retrieves a document by its ID
 func (r *MongoRepository[T]) FindById(ctx context.Context, id primitive.ObjectID) (T, error) {
 	var result T
 	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
 	return result, err
 }
 
-// Save inserts or updates a document
-func (r *MongoRepository[T]) Save(ctx context.Context, item T) error {
+func (r *MongoRepository[T]) ExistsById(ctx context.Context, id primitive.ObjectID) (bool, error) {
+	count, err := r.collection.CountDocuments(ctx, bson.M{"_id": id}, options.Count().SetLimit(1))
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *MongoRepository[T]) Save(ctx context.Context, item T) (T, error) {
 	v := reflect.ValueOf(item)
 	if v.Kind() == reflect.Ptr {
 		v = v.Elem()
 	}
 	id := v.Field(r.idFieldIndex).Interface()
-	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
-	return err
+	result, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
+	if err != nil {
+		return item, err
+	}
+	if result.UpsertedID != nil {
+		v.Field(r.idFieldIndex).Set(reflect.ValueOf(result.UpsertedID))
+	}
+	return item, nil
 }
 
-// SaveAll inserts or updates multiple documents
-func (r *MongoRepository[T]) SaveAll(ctx context.Context, items []T) error {
+func (r *MongoRepository[T]) SaveAll(ctx context.Context, items []T) ([]T, error) {
 	var writes []mongo.WriteModel
 	for _, item := range items {
 		v := reflect.ValueOf(item)
@@ -125,27 +131,48 @@ func (r *MongoRepository[T]) SaveAll(ctx context.Context, items []T) error {
 		write := mongo.NewReplaceOneModel().SetFilter(bson.M{"_id": id}).SetReplacement(item).SetUpsert(true)
 		writes = append(writes, write)
 	}
-	_, err := r.collection.BulkWrite(ctx, writes)
-	return err
+	result, err := r.collection.BulkWrite(ctx, writes)
+	if err != nil {
+		return items, err
+	}
+	for i, upsertedID := range result.UpsertedIDs {
+		if upsertedID != nil {
+			v := reflect.ValueOf(&items[i]).Elem()
+			v.Field(r.idFieldIndex).Set(reflect.ValueOf(upsertedID))
+		}
+	}
+	return items, nil
 }
 
-// DeleteById deletes a document by its ID
 func (r *MongoRepository[T]) DeleteById(ctx context.Context, id primitive.ObjectID) error {
 	_, err := r.collection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
 
-// FindOneCustom finds a single document based on a custom filter
-func (r *MongoRepository[T]) FilterOne(ctx context.Context, filter interface{}, opts ...*options.FindOneOptions) (T, error) {
+func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig QueryConfig) (T, error) {
 	var result T
-	err := r.collection.FindOne(ctx, filter, opts...).Decode(&result)
+	findOptions := options.FindOne()
+	if queryConfig.Projection != nil {
+		findOptions.SetProjection(queryConfig.Projection)
+	}
+	err := r.collection.FindOne(ctx, queryConfig.Query, findOptions).Decode(&result)
 	return result, err
 }
 
-// FindManyCustom finds multiple documents based on a custom filter
-func (r *MongoRepository[T]) FilterMany(ctx context.Context, filter interface{}, opts ...*options.FindOptions) ([]T, error) {
+func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig QueryConfig) ([]T, error) {
 	var results []T
-	cursor, err := r.collection.Find(ctx, filter, opts...)
+	findOptions := options.Find()
+	if queryConfig.Sort != nil {
+		findOptions.SetSort(queryConfig.Sort)
+	}
+	if queryConfig.Projection != nil {
+		findOptions.SetProjection(queryConfig.Projection)
+	}
+	if len(queryConfig.Pageable) == 2 {
+		findOptions.SetSkip(int64(queryConfig.Pageable[0]))
+		findOptions.SetLimit(int64(queryConfig.Pageable[1]))
+	}
+	cursor, err := r.collection.Find(ctx, queryConfig.Query, findOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -154,24 +181,23 @@ func (r *MongoRepository[T]) FilterMany(ctx context.Context, filter interface{},
 	return results, err
 }
 
-func (r *MongoRepository[T]) DeleteOne(ctx context.Context, filter bson.M) error {
-	_, err := r.collection.DeleteOne(ctx, filter)
-	return err
+func (r *MongoRepository[T]) AggregateOne(ctx context.Context, pipeline []bson.M) (bson.M, error) {
+	cursor, err := r.collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	var result bson.M
+	if cursor.Next(ctx) {
+		err = cursor.Decode(&result)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
-// DeleteMany deletes multiple documents based on a filter
-func (r *MongoRepository[T]) DeleteMany(ctx context.Context, filter bson.M) error {
-	_, err := r.collection.DeleteMany(ctx, filter)
-	return err
-}
-
-// Count returns the number of documents matching the filter
-func (r *MongoRepository[T]) Count(ctx context.Context, filter bson.M) (int64, error) {
-	return r.collection.CountDocuments(ctx, filter)
-}
-
-// Aggregate performs an aggregation pipeline
-func (r *MongoRepository[T]) Aggregate(ctx context.Context, pipeline []bson.M) ([]bson.M, error) {
+func (r *MongoRepository[T]) AggregateMultiple(ctx context.Context, pipeline []bson.M) ([]bson.M, error) {
 	cursor, err := r.collection.Aggregate(ctx, pipeline)
 	if err != nil {
 		return nil, err
