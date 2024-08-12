@@ -43,12 +43,19 @@ func (r *MongoRepository[T]) setIdField() error {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
 	for i := 0; i < t.NumField(); i++ {
-		if tag := t.Field(i).Tag.Get("bson"); tag == "_id" {
-			r.idFieldIndex = i
-			return nil
+		if tag := t.Field(i).Tag.Get("bson"); tag != "" {
+			tags := strings.Split(tag, ",")
+			for _, t := range tags {
+				if strings.TrimSpace(t) == "_id" {
+					r.idFieldIndex = i
+					return nil
+				}
+			}
 		}
 	}
+
 	return errors.New("type does not have a field with bson:\"_id\" tag")
 }
 
@@ -105,41 +112,46 @@ func (r *MongoRepository[T]) ExistsById(ctx context.Context, id primitive.Object
 }
 
 func (r *MongoRepository[T]) Save(ctx context.Context, item T) (T, error) {
-	v := reflect.ValueOf(item)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
+	v := reflect.ValueOf(&item).Elem()
+	idField := v.Field(r.idFieldIndex)
+	id := idField.Interface().(primitive.ObjectID)
+	if id.IsZero() {
+		result, err := r.collection.InsertOne(ctx, item)
+		if err != nil {
+			return item, err
+		}
+		idField.Set(reflect.ValueOf(result.InsertedID.(primitive.ObjectID)))
+	} else {
+		_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
+		if err != nil {
+			return item, err
+		}
 	}
-	id := v.Field(r.idFieldIndex).Interface()
-	result, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
-	if err != nil {
-		return item, err
-	}
-	if result.UpsertedID != nil {
-		v.Field(r.idFieldIndex).Set(reflect.ValueOf(result.UpsertedID))
-	}
+
 	return item, nil
 }
 
 func (r *MongoRepository[T]) SaveAll(ctx context.Context, items []T) ([]T, error) {
 	var writes []mongo.WriteModel
-	for _, item := range items {
-		v := reflect.ValueOf(item)
-		if v.Kind() == reflect.Ptr {
-			v = v.Elem()
+	for i := range items {
+		v := reflect.ValueOf(&items[i]).Elem()
+		idField := v.Field(r.idFieldIndex)
+		id := idField.Interface().(primitive.ObjectID)
+		if id.IsZero() {
+			id = primitive.NewObjectID()
+			idField.Set(reflect.ValueOf(id))
 		}
-		id := v.Field(r.idFieldIndex).Interface()
-		write := mongo.NewReplaceOneModel().SetFilter(bson.M{"_id": id}).SetReplacement(item).SetUpsert(true)
+
+		write := mongo.NewReplaceOneModel().
+			SetFilter(bson.M{"_id": id}).
+			SetReplacement(items[i]).
+			SetUpsert(true)
 		writes = append(writes, write)
 	}
-	result, err := r.collection.BulkWrite(ctx, writes)
+
+	_, err := r.collection.BulkWrite(ctx, writes)
 	if err != nil {
 		return items, err
-	}
-	for i, upsertedID := range result.UpsertedIDs {
-		if upsertedID != nil {
-			v := reflect.ValueOf(&items[i]).Elem()
-			v.Field(r.idFieldIndex).Set(reflect.ValueOf(upsertedID))
-		}
 	}
 	return items, nil
 }
