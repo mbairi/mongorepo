@@ -17,13 +17,6 @@ type MongoRepository[T any] struct {
 	idFieldIndex int
 }
 
-type QueryConfig struct {
-	Query      bson.M
-	Projection bson.M
-	Sort       bson.M
-	Pageable   []int
-}
-
 func NewMongoRepository[T any](collection *mongo.Collection) (*MongoRepository[T], error) {
 	repo := &MongoRepository[T]{
 		collection: collection,
@@ -161,7 +154,7 @@ func (r *MongoRepository[T]) DeleteById(ctx context.Context, id primitive.Object
 	return err
 }
 
-func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig QueryConfig) (T, error) {
+func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig ClassicQuery) (T, error) {
 	var result T
 	findOptions := options.FindOne()
 	if queryConfig.Projection != nil {
@@ -171,7 +164,7 @@ func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig QueryConf
 	return result, err
 }
 
-func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig QueryConfig) ([]T, error) {
+func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig ClassicQuery) ([]T, error) {
 	var results []T
 	findOptions := options.Find()
 	if queryConfig.Sort != nil {
@@ -181,7 +174,7 @@ func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig QueryCon
 		findOptions.SetProjection(queryConfig.Projection)
 	}
 	if len(queryConfig.Pageable) == 2 {
-		findOptions.SetSkip(int64(queryConfig.Pageable[0]))
+		findOptions.SetSkip(int64(queryConfig.Pageable[1] * queryConfig.Pageable[0]))
 		findOptions.SetLimit(int64(queryConfig.Pageable[1]))
 	}
 	cursor, err := r.collection.Find(ctx, queryConfig.Query, findOptions)

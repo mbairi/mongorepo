@@ -42,7 +42,6 @@ func TestSave(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Test inserting a new document
 	newItem := TestModel{Name: "John Doe", Age: 30, CreatedAt: time.Now()}
 	savedItem, err := repo.Save(ctx, newItem)
 	if err != nil {
@@ -52,7 +51,6 @@ func TestSave(t *testing.T) {
 		t.Fatalf("Expected non-zero ID for saved item")
 	}
 
-	// Test updating an existing document
 	savedItem.Name = "Jane Doe"
 	updatedItem, err := repo.Save(ctx, savedItem)
 	if err != nil {
@@ -67,14 +65,12 @@ func TestFindById(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Insert a test document
 	newItem := TestModel{Name: "Test User", Age: 25, CreatedAt: time.Now()}
 	savedItem, err := repo.Save(ctx, newItem)
 	if err != nil {
 		t.Fatalf("Failed to save test item: %v", err)
 	}
 
-	// Test finding the document by ID
 	foundItem, err := repo.FindById(ctx, savedItem.ID)
 	if err != nil {
 		t.Fatalf("Failed to find item by ID: %v", err)
@@ -149,7 +145,7 @@ func TestQueryOne(t *testing.T) {
 	}
 
 	// Test querying for one document
-	query := QueryConfig{
+	query := ClassicQuery{
 		Query: bson.M{"name": "Query Test"},
 	}
 	foundItem, err := repo.QueryOne(ctx, query)
@@ -179,9 +175,9 @@ func TestQueryMany(t *testing.T) {
 	}
 
 	// Test querying for multiple documents
-	query := QueryConfig{
+	query := ClassicQuery{
 		Query: bson.M{"age": bson.M{"$gte": 30}},
-		Sort:  bson.M{"age": 1},
+		Sort:  bson.D{bson.E{Key: "age", Value: 1}},
 	}
 	foundItems, err := repo.QueryMany(ctx, query)
 	if err != nil {
