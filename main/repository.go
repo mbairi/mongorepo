@@ -96,12 +96,31 @@ func (r *MongoRepository[T]) FindById(ctx context.Context, id primitive.ObjectID
 	return result, err
 }
 
+func (r *MongoRepository[T]) FindByIds(ctx context.Context, ids []primitive.ObjectID) ([]T, error) {
+	var results []T
+	cursor, err := r.collection.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+	err = cursor.All(ctx, &results)
+	return results, err
+}
+
 func (r *MongoRepository[T]) ExistsById(ctx context.Context, id primitive.ObjectID) (bool, error) {
 	count, err := r.collection.CountDocuments(ctx, bson.M{"_id": id}, options.Count().SetLimit(1))
 	if err != nil {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (r *MongoRepository[T]) Count(ctx context.Context) (int64, error) {
+	count, err := r.collection.CountDocuments(ctx, bson.M{}, options.Count().SetLimit(1))
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *MongoRepository[T]) Save(ctx context.Context, item T) (T, error) {
