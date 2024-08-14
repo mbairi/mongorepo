@@ -86,7 +86,7 @@ func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person,
 		Query:      bson.M{"age": bson.M{"$gte": age}},
 		Projection: bson.M{"name": 1},
 		Sort:       bson.D{bson.E{Key: "name", Value: 1}},
-		Pageable:   [2]int{0, 5},
+		Pageable:   [2]int{page, limit},
 	}
 	return r.QueryMany(context.TODO(), queryConfig)
 }
@@ -101,15 +101,17 @@ func (r *PersonRepository) FindByName(name string) ([]Person, error) {
 
 ### Simple query
 
+Similar to classic query, for even more easier use you can directly provide the query in string format rather than using neste bson.Ms to construct the query. The n'th param is indicated using ?1 in the string.
+
 ```go
 func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
 	simpleConfig := qmodels.ClassicQuery{
 		Query:      `{ "age": { "$gte": ?1 }}`,
 		Projection: `{ "name": 1 }`,
 		Sort:       `[{ "name":1 }]`,
-		Pageable:   [2]int{0, 5},
+		Pageable:   [2]int{page, limit},
 	}
-  queryConfig,_ := simpleConfig.ToQueryConfig()
+  queryConfig,_ := simpleConfig.ToQueryConfig(age)
 	return r.QueryMany(context.TODO(), queryConfig)
 }
 ```
