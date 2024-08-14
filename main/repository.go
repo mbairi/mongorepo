@@ -3,7 +3,9 @@ package mongorepo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -17,14 +19,19 @@ type MongoRepository[T any] struct {
 	idFieldIndex int
 }
 
-func NewMongoRepository[T any](collection *mongo.Collection) (*MongoRepository[T], error) {
+func NewMongoRepository[T any](
+	collection *mongo.Collection,
+) (*MongoRepository[T], error) {
 	repo := &MongoRepository[T]{
 		collection: collection,
 	}
 	if err := repo.setIdField(); err != nil {
 		return nil, err
 	}
-	if err := repo.ensureIndexes(); err != nil {
+	if err := repo.ensureSimpleIndexes(); err != nil {
+		return nil, err
+	}
+	if err := repo.ensureCompoundIndex(); err != nil {
 		return nil, err
 	}
 	return repo, nil
@@ -52,7 +59,7 @@ func (r *MongoRepository[T]) setIdField() error {
 	return errors.New("type does not have a field with bson:\"_id\" tag")
 }
 
-func (r *MongoRepository[T]) ensureIndexes() error {
+func (r *MongoRepository[T]) ensureSimpleIndexes() error {
 	var dummy T
 	t := reflect.TypeOf(dummy)
 	if t.Kind() == reflect.Ptr {
@@ -61,13 +68,28 @@ func (r *MongoRepository[T]) ensureIndexes() error {
 	var indexes []mongo.IndexModel
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
+		fieldName := field.Name
+		if tag := field.Tag.Get("bson"); tag != "" {
+			splitTags := strings.Split(tag, ",")
+			fieldName = splitTags[0]
+		}
 		if tag := field.Tag.Get("index"); tag != "" {
-			order := 1
-			if strings.ToLower(tag) == "desc" {
-				order = -1
+			splitTags := strings.Split(tag, ",")
+			var indexType interface{}
+			isUnique := false
+			for _, splitTag := range splitTags {
+				if splitTag == "unique" {
+					isUnique = true
+				} else if splitTag == "1" || splitTag == "-1" {
+					indexType, _ = strconv.Atoi(splitTag)
+				} else {
+					indexType = splitTag
+				}
 			}
+			indexOptions := options.IndexOptions{Unique: &isUnique}
 			index := mongo.IndexModel{
-				Keys: bson.D{{field.Name, order}},
+				Keys:    bson.D{{Key: fieldName, Value: indexType}},
+				Options: &indexOptions,
 			}
 			indexes = append(indexes, index)
 		}
@@ -76,6 +98,51 @@ func (r *MongoRepository[T]) ensureIndexes() error {
 		_, err := r.collection.Indexes().CreateMany(context.Background(), indexes)
 		return err
 	}
+	return nil
+}
+
+func (r *MongoRepository[T]) ensureCompoundIndex() error {
+	var t T
+	elemType := reflect.TypeOf(t)
+	field := elemType.Field(r.idFieldIndex)
+	cindexTag := field.Tag.Get("cindex")
+	if cindexTag == "" {
+		return nil // No index to create
+	}
+
+	cleanedCindex := strings.ReplaceAll(cindexTag, "{", "")
+	cleanedCindex = strings.ReplaceAll(cleanedCindex, "}", "")
+	indexes := strings.Split(cleanedCindex, ";")
+
+	for _, index := range indexes {
+		indexKeys := bson.D{}
+		parts := strings.Split(index, ",")
+
+		for _, part := range parts {
+			kv := strings.Split(part, ":")
+			if len(kv) != 2 {
+				return fmt.Errorf("invalid compound index format: %s", part)
+			}
+
+			fieldName := kv[0]
+			order, err := strconv.Atoi(kv[1])
+			if err != nil {
+				return fmt.Errorf("invalid compound index order: %s", kv[1])
+			}
+
+			indexKeys = append(indexKeys, bson.E{Key: fieldName, Value: order})
+		}
+
+		indexModel := mongo.IndexModel{
+			Keys: indexKeys,
+		}
+
+		_, err := r.collection.Indexes().CreateOne(context.TODO(), indexModel)
+		if err != nil {
+			return fmt.Errorf("failed to create index: %v", err)
+		}
+	}
+
 	return nil
 }
 

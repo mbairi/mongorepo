@@ -12,8 +12,8 @@ import (
 )
 
 type TestModel struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty"`
-	Name      string             `bson:"name"`
+	ID        primitive.ObjectID `bson:"_id,omitempty" cindex:"{name:1,age:1};{age:1,created_at:1}"`
+	Name      string             `bson:"name" index:"1"`
 	Age       int                `bson:"age"`
 	CreatedAt time.Time          `bson:"created_at"`
 }
@@ -25,7 +25,6 @@ func setupTestRepo(t *testing.T) *MongoRepository[TestModel] {
 	}
 	collection := client.Database("testdb").Collection("testcollection")
 
-	// Drop the collection before each test to ensure a clean state
 	err = collection.Drop(context.TODO())
 	if err != nil {
 		t.Fatalf("Failed to drop collection: %v", err)
@@ -208,7 +207,6 @@ func TestAggregateOne(t *testing.T) {
 		}
 	}
 
-	// Test aggregation for one result
 	pipeline := []bson.M{
 		{"$group": bson.M{"_id": nil, "avgAge": bson.M{"$avg": "$age"}}},
 	}
@@ -239,7 +237,6 @@ func TestAggregateMultiple(t *testing.T) {
 		}
 	}
 
-	// Test aggregation for multiple results
 	pipeline := []bson.M{
 		{"$group": bson.M{"_id": "$age", "count": bson.M{"$sum": 1}}},
 		{"$sort": bson.M{"_id": 1}},
@@ -262,22 +259,23 @@ func TestDeleteById(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Insert a test document
 	newItem := TestModel{Name: "Delete Test", Age: 50, CreatedAt: time.Now()}
 	savedItem, err := repo.Save(ctx, newItem)
 	if err != nil {
 		t.Fatalf("Failed to save test item: %v", err)
 	}
 
-	// Test deleting the document by ID
 	err = repo.DeleteById(ctx, savedItem.ID)
 	if err != nil {
 		t.Fatalf("Failed to delete item by ID: %v", err)
 	}
 
-	// Verify the item is deleted
 	_, err = repo.FindById(ctx, savedItem.ID)
 	if err == nil {
 		t.Fatalf("Expected item to be deleted, but it still exists")
 	}
+}
+
+func TestCompoundIndices(t *testing.T) {
+	setupTestRepo(t)
 }
