@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mbairi/mongorepo"
+	mongorepo "github.com/mbairi/mongorepo/main"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
