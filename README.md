@@ -16,6 +16,8 @@ go get github.com/mbairi/mongorepo
 
 ### Getting started
 
+The repository for a document of your choice is created by embedding repo.MongoRepository that we provide using generics. When writing your constructor for the repository, instantiate it for that document type with the collection & embed it.
+
 ```go
 import 	"github.com/mbairi/mongorepo/repo"
 
@@ -55,20 +57,28 @@ func main() {
 
 ### Default methods
 
+Out of the box, these methods are provided by the library without any extra code.
+
 | Function   | Description                                                     |
 | ---------- | --------------------------------------------------------------- |
 | Save       | Upserts a single item. If inserting, populates ID               |
 | SaveAll    | Upserts all items in array. Populates ID for items if inserting |
 | FindById   | Finds an item from collection matching \_id                     |
-| FindByIds  | Finds items whose ids match given ids                           |
+| FindByIds  | Finds items which match given list of ids                       |
 | DeleteById | Deletes an object from collection matching \_id                 |
 | FindAll    | Fetches all documents from given collection                     |
 | ExistsById | Returns true if it finds an element with \_id                   |
 | Count      | Returns count of items present in collection                    |
 
-> These functions rely on the bson: "\_id" tag. Save & SaveAll use reflection to setId on the bson:"\_id" tagged field if inserting
+<br/>
+The id related functions rely on the `bson:"\_id" tag in the struct defined for your document
+<br/><br/>
+Save & SaveAll are *NOT* idempotent, the items provided are updated with id if inserted & returns the same
 
 ### Classic query
+
+Synctactical sugar is provided to make it easy to build queries for majority of your usecases.
+qmodels.ClassicQuery provides 4 fields that are used to construct majority of the queries, as shown below.
 
 ```go
 func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
@@ -173,5 +183,3 @@ type Person struct {
 	Email 			string             `bson:"email" `
 }
 ```
-
-### Fallback
