@@ -1,4 +1,4 @@
-package mongorepo
+package repo
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	qmodels "github.com/mbairi/mongorepo/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -247,7 +248,7 @@ func (r *MongoRepository[T]) DeleteById(ctx context.Context, id primitive.Object
 	return err
 }
 
-func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig ClassicQuery) (T, error) {
+func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig qmodels.ClassicQuery) (T, error) {
 	var result T
 	findOptions := options.FindOne()
 	if queryConfig.Projection != nil {
@@ -257,7 +258,7 @@ func (r *MongoRepository[T]) QueryOne(ctx context.Context, queryConfig ClassicQu
 	return result, err
 }
 
-func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig ClassicQuery) ([]T, error) {
+func (r *MongoRepository[T]) QueryMany(ctx context.Context, queryConfig qmodels.ClassicQuery) ([]T, error) {
 	var results []T
 	findOptions := options.Find()
 	if queryConfig.Sort != nil {

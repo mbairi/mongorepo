@@ -1,10 +1,11 @@
-package mongorepo
+package repo
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	qmodels "github.com/mbairi/mongorepo/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -136,7 +137,7 @@ func TestQueryOne(t *testing.T) {
 		t.Fatalf("Failed to save test item: %v", err)
 	}
 
-	query := ClassicQuery{
+	query := qmodels.ClassicQuery{
 		Query: bson.M{"name": "Query Test"},
 	}
 	foundItem, err := repo.QueryOne(ctx, query)
@@ -164,7 +165,7 @@ func TestQueryMany(t *testing.T) {
 		}
 	}
 
-	query := ClassicQuery{
+	query := qmodels.ClassicQuery{
 		Query: bson.M{"age": bson.M{"$gte": 30}},
 		Sort:  bson.D{bson.E{Key: "age", Value: 1}},
 	}

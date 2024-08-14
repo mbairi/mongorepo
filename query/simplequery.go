@@ -1,4 +1,4 @@
-package mongorepo
+package qmodels
 
 import (
 	"encoding/json"
