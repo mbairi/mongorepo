@@ -1,36 +1,62 @@
+![Go Version](https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 # Installation
 
 ```bash
-go get github.com/Manjunatha-b/mongorepo
+go get github.com/mbairi/mongorepo
 ```
 
-# Usage
+# Basic Usage
 
 ```go
+import 	"github.com/mbairi/mongorepo/repo"
+
 type Person struct {
-	ID    primitive.ObjectID `bson:"_id,omitempty"`
-	Name  string             `bson:"name" index:"asc, unique"`
-	Age   int                `bson:"age"`
+	ID    primitive.ObjectID `bson:"_id"`
+	Name  string             `bson:"name"`
 	Email string             `bson:"email"`
+	Age   int64              `bson:"age"`
 }
 
+// Repository declaration
 type PersonRepository struct {
-	*mongorepo.MongoRepository[Person]
+	*repo.MongoRepository[Person]
 }
+
+func NewPersonRepository(collection *mongo.Collection) *PersonRepository {
+	repoEmbedding, _ := repo.NewMongoRepository[Person](collection)
+	return &PersonRepository{repoEmbedding}
+}
+
+func main() {
+	// setup the databse & repository with manual injection
+	client, _ := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017/testdb"))
+	collection := client.Database("testdb").Collection("testcollection")
+	personRepository := NewPersonRepository(collection)
+
+	// save the person & fetch from database with updated ID just to test
+	person := Person{Name: "Nitin", Email: "nitin.does.not.exist@gmail.com", Age: 26}
+	savedPerson, _ := personRepository.Save(context.TODO(), person) // returns with updated ID ( input is NOT idempotent )
+	foundPerson, _ := personRepository.FindById(context.TODO(), savedPerson.ID)
+
+	fmt.Println(foundPerson)
+}
+
 ```
 
 ### Inbuilt methods
 
-| Function                                                  | Description                                                                           |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Save(ctx context.Context, item T )                        | If item is present in database, update it. Otherwise insert & return item with id set |
-| SaveAll( ctx context.Context, item []T )                  | If item in array is new, set an id to it & insert to db, otherwise update.            |
-| FindById( ctx context.Context, id primitive.ObjectId )    | Finds an item from collection matching \_id : given id                                |
-| FindByIds( ctx context.Context, ids []primitve.ObjectId ) | Finds items whose ids match given ids                                                 |
-| DeleteById( ctx context.Context, id primitive.ObjectId )  | Deletes an object from collection matching \_id : given id                            |
-| FindAll( ctx context.Context )                            | Fetches all documents from given collection                                           |
-| ExistsById ( ctx context.Context, id primitive.ObjectId ) | Returns true if it finds an element with \_id: given id                               |
-| Count ( ctx context.Context, id primitive.ObjectId )      | Returns count of items present in collection                                          |
+| Function                                                  | Description                                                     |
+| --------------------------------------------------------- | --------------------------------------------------------------- |
+| Save(ctx context.Context, item T )                        | Upserts a single item. If inserting, populates ID               |
+| SaveAll( ctx context.Context, item []T )                  | Upserts all items in array. Populates ID for items if inserting |
+| FindById( ctx context.Context, id primitive.ObjectId )    | Finds an item from collection matching \_id                     |
+| FindByIds( ctx context.Context, ids []primitve.ObjectId ) | Finds items whose ids match given ids                           |
+| DeleteById( ctx context.Context, id primitive.ObjectId )  | Deletes an object from collection matching \_id                 |
+| FindAll( ctx context.Context )                            | Fetches all documents from given collection                     |
+| ExistsById ( ctx context.Context, id primitive.ObjectId ) | Returns true if it finds an element with \_id                   |
+| Count ( ctx context.Context, id primitive.ObjectId )      | Returns count of items present in collection                    |
 
 > These functions rely on the bson: "\_id" tag
 
@@ -40,7 +66,7 @@ type PersonRepository struct {
 
 ```go
 func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
-	queryConfig := mongorepo.ClassicQuery{
+	queryConfig := qmodels.ClassicQuery{
 		Query:      bson.M{"age": bson.M{"$gte": age}},
 		Projection: bson.M{"name": 1},
 		Sort:       bson.D{bson.E{Key: "name", Value: 1}},
@@ -50,7 +76,7 @@ func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person,
 }
 
 func (r *PersonRepository) FindByName(name string) ([]Person, error) {
-	queryConfig := mongorepo.ClassicQuery{
+	queryConfig := qmodels.ClassicQuery{
 		Query:      bson.M{"name": name},
 	}
 	return r.QueryMany(context.TODO(), queryConfig)
@@ -61,7 +87,7 @@ func (r *PersonRepository) FindByName(name string) ([]Person, error) {
 
 ```go
 func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
-	simpleConfig := mongorepo.ClassicQuery{
+	simpleConfig := qmodels.ClassicQuery{
 		Query:      `{ "age": { "$gte": ?1 }}`,
 		Projection: `{ "name": 1 }`,
 		Sort:       `[{ "name":1 }]`,
@@ -123,9 +149,9 @@ func (r *PersonRepository) AvgAge() {
 ```go
 type Person struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Name        string             `bson:"name" index:"asc, unique"`
-	Age         int                `bson:"age" index:"desc"`
-	Description string             `bson:"description" index:"text"`
+	Name        string             `bson:"name" index:"1, unique"`
+	Age         int                `bson:"age" index:"-1"`
+	Email 			string             `bson:"email" index:"text"`
 }
 ```
 
@@ -135,10 +161,10 @@ type Person struct {
 
 ```go
 type Person struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" cindex:"{age:1,name:-1};{age:1,description:1}"`
-	Name        string             `bson:"name" `
+	ID          primitive.ObjectID `bson:"_id,omitempty" cindex:"{age:1,name:-1};{age:1,email:1}"`
+	Name        string             `bson:"name"`
 	Age         int                `bson:"age"`
-	Description string             `bson:"description" `
+	Email 			string             `bson:"email" `
 }
 ```
 
