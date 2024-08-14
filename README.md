@@ -4,13 +4,15 @@
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a> 
 </p>
 
-# Installation
+<p align = "center">A Go library inspired by Spring's MongoRepository, reducing boilerplate and speeding up development by providing common MongoDB operations out of the box. </p>
+
+# Usage
+
+### Installation
 
 ```bash
 go get github.com/mbairi/mongorepo
 ```
-
-# Usage
 
 ### Getting started
 
