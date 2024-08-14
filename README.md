@@ -1,5 +1,8 @@
-![Go Version](https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+<img width="330" height="110" src="logo.svg" border="0" alt="kelindar/column"/> <br/>
+<a><img src="https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo" alt="License"></a> 
+<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a> 
+</p>
 
 # Installation
 
@@ -7,11 +10,14 @@
 go get github.com/mbairi/mongorepo
 ```
 
-# Basic Usage
+# Usage
+
+### Getting started
 
 ```go
 import 	"github.com/mbairi/mongorepo/repo"
 
+// Document struct we will be storing in db
 type Person struct {
 	ID    primitive.ObjectID `bson:"_id"`
 	Name  string             `bson:"name"`
@@ -45,22 +51,20 @@ func main() {
 
 ```
 
-### Inbuilt methods
+### Default methods
 
-| Function                                                  | Description                                                     |
-| --------------------------------------------------------- | --------------------------------------------------------------- |
-| Save(ctx context.Context, item T )                        | Upserts a single item. If inserting, populates ID               |
-| SaveAll( ctx context.Context, item []T )                  | Upserts all items in array. Populates ID for items if inserting |
-| FindById( ctx context.Context, id primitive.ObjectId )    | Finds an item from collection matching \_id                     |
-| FindByIds( ctx context.Context, ids []primitve.ObjectId ) | Finds items whose ids match given ids                           |
-| DeleteById( ctx context.Context, id primitive.ObjectId )  | Deletes an object from collection matching \_id                 |
-| FindAll( ctx context.Context )                            | Fetches all documents from given collection                     |
-| ExistsById ( ctx context.Context, id primitive.ObjectId ) | Returns true if it finds an element with \_id                   |
-| Count ( ctx context.Context, id primitive.ObjectId )      | Returns count of items present in collection                    |
+| Function   | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| Save       | Upserts a single item. If inserting, populates ID               |
+| SaveAll    | Upserts all items in array. Populates ID for items if inserting |
+| FindById   | Finds an item from collection matching \_id                     |
+| FindByIds  | Finds items whose ids match given ids                           |
+| DeleteById | Deletes an object from collection matching \_id                 |
+| FindAll    | Fetches all documents from given collection                     |
+| ExistsById | Returns true if it finds an element with \_id                   |
+| Count      | Returns count of items present in collection                    |
 
-> These functions rely on the bson: "\_id" tag
-
-> Save & SaveAll use reflection to setId on the bson:"\_id" tagged field if inserting
+> These functions rely on the bson: "\_id" tag. Save & SaveAll use reflection to setId on the bson:"\_id" tagged field if inserting
 
 ### Classic query
 
