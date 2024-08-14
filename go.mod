@@ -1,4 +1,4 @@
-module mongorepo
+module github.com/mbairi/mongorepo
 
 go 1.22.5
 

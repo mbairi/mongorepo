@@ -3,7 +3,8 @@ package example
 import (
 	"context"
 	"fmt"
-	mongorepo "mongorepo"
+
+	"github.com/mbairi/mongorepo"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
