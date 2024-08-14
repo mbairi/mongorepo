@@ -82,8 +82,6 @@ func TestFindById(t *testing.T) {
 func TestFindAll(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
-
-	// Insert multiple test documents
 	items := []TestModel{
 		{Name: "User 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "User 2", Age: 30, CreatedAt: time.Now()},
@@ -96,7 +94,6 @@ func TestFindAll(t *testing.T) {
 		}
 	}
 
-	// Test finding all documents
 	foundItems, err := repo.FindAll(ctx)
 	if err != nil {
 		t.Fatalf("Failed to find all items: %v", err)
@@ -109,8 +106,6 @@ func TestFindAll(t *testing.T) {
 func TestSaveAll(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
-
-	// Prepare multiple items to save
 	items := []TestModel{
 		{Name: "Bulk User 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "Bulk User 2", Age: 30, CreatedAt: time.Now()},
@@ -135,15 +130,12 @@ func TestSaveAll(t *testing.T) {
 func TestQueryOne(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
-
-	// Insert a test document
 	newItem := TestModel{Name: "Query Test", Age: 40, CreatedAt: time.Now()}
 	_, err := repo.Save(ctx, newItem)
 	if err != nil {
 		t.Fatalf("Failed to save test item: %v", err)
 	}
 
-	// Test querying for one document
 	query := ClassicQuery{
 		Query: bson.M{"name": "Query Test"},
 	}
@@ -160,7 +152,6 @@ func TestQueryMany(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Insert multiple test documents
 	items := []TestModel{
 		{Name: "Query Many 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
@@ -173,7 +164,6 @@ func TestQueryMany(t *testing.T) {
 		}
 	}
 
-	// Test querying for multiple documents
 	query := ClassicQuery{
 		Query: bson.M{"age": bson.M{"$gte": 30}},
 		Sort:  bson.D{bson.E{Key: "age", Value: 1}},
@@ -194,7 +184,6 @@ func TestAggregateOne(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Insert test documents
 	items := []TestModel{
 		{Name: "Agg One 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "Agg One 2", Age: 30, CreatedAt: time.Now()},
@@ -224,7 +213,6 @@ func TestAggregateMultiple(t *testing.T) {
 	repo := setupTestRepo(t)
 	ctx := context.TODO()
 
-	// Insert test documents
 	items := []TestModel{
 		{Name: "Agg Multi 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "Agg Multi 2", Age: 30, CreatedAt: time.Now()},
@@ -274,8 +262,4 @@ func TestDeleteById(t *testing.T) {
 	if err == nil {
 		t.Fatalf("Expected item to be deleted, but it still exists")
 	}
-}
-
-func TestCompoundIndices(t *testing.T) {
-	setupTestRepo(t)
 }

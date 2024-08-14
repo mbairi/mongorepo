@@ -19,12 +19,12 @@ type MongoRepository[T any] struct {
 	idFieldIndex int
 }
 
-func NewMongoRepository[T any](
-	collection *mongo.Collection,
-) (*MongoRepository[T], error) {
+func NewMongoRepository[T any](collection *mongo.Collection) (*MongoRepository[T], error) {
+
 	repo := &MongoRepository[T]{
 		collection: collection,
 	}
+
 	if err := repo.setIdField(); err != nil {
 		return nil, err
 	}
@@ -65,28 +65,30 @@ func (r *MongoRepository[T]) ensureSimpleIndexes() error {
 	if t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
+
 	var indexes []mongo.IndexModel
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		fieldName := field.Name
-		if tag := field.Tag.Get("bson"); tag != "" {
-			splitTags := strings.Split(tag, ",")
-			fieldName = splitTags[0]
-		}
+		fieldName := getFieldName(field)
+
 		if tag := field.Tag.Get("index"); tag != "" {
 			splitTags := strings.Split(tag, ",")
 			var indexType interface{}
-			isUnique := false
+			indexOptions := options.IndexOptions{}
 			for _, splitTag := range splitTags {
-				if splitTag == "unique" {
-					isUnique = true
-				} else if splitTag == "1" || splitTag == "-1" {
+				switch splitTag {
+				case "unique":
+					indexOptions.SetUnique(true)
+				case "1", "-1":
 					indexType, _ = strconv.Atoi(splitTag)
-				} else {
+				case "sparse":
+					indexOptions.SetSparse(true)
+				case "text", "2dsphere":
 					indexType = splitTag
+				default:
+					return errors.New("unsupported index tag: " + splitTag)
 				}
 			}
-			indexOptions := options.IndexOptions{Unique: &isUnique}
 			index := mongo.IndexModel{
 				Keys:    bson.D{{Key: fieldName, Value: indexType}},
 				Options: &indexOptions,
@@ -99,6 +101,15 @@ func (r *MongoRepository[T]) ensureSimpleIndexes() error {
 		return err
 	}
 	return nil
+}
+
+func getFieldName(field reflect.StructField) string {
+	fieldName := field.Name
+	if tag := field.Tag.Get("bson"); tag != "" {
+		splitTags := strings.Split(tag, ",")
+		fieldName = splitTags[0]
+	}
+	return fieldName
 }
 
 func (r *MongoRepository[T]) ensureCompoundIndex() error {
@@ -195,18 +206,14 @@ func (r *MongoRepository[T]) Save(ctx context.Context, item T) (T, error) {
 	idField := v.Field(r.idFieldIndex)
 	id := idField.Interface().(primitive.ObjectID)
 	if id.IsZero() {
-		result, err := r.collection.InsertOne(ctx, item)
-		if err != nil {
-			return item, err
-		}
-		idField.Set(reflect.ValueOf(result.InsertedID.(primitive.ObjectID)))
-	} else {
-		_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
-		if err != nil {
-			return item, err
-		}
+		id = primitive.NewObjectID()
+		idField.Set(reflect.ValueOf(id))
 	}
 
+	_, err := r.collection.ReplaceOne(ctx, bson.M{"_id": id}, item, options.Replace().SetUpsert(true))
+	if err != nil {
+		return item, err
+	}
 	return item, nil
 }
 

@@ -135,7 +135,7 @@ type Person struct {
 
 ```go
 type Person struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" cindex:"{"age":1,"name":-1};"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" cindex:"{age:1,name:-1};{age:1,description:1}"`
 	Name        string             `bson:"name" `
 	Age         int                `bson:"age"`
 	Description string             `bson:"description" `
