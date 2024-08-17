@@ -140,8 +140,8 @@ func TestQueryOne(t *testing.T) {
 	}
 
 	foundItem, err := repo.QueryRunner().
-		Filter(`{"name":?1}`).
-		QueryOne(newItem.Name)
+		Filter(`{"name":?1}`, newItem.Name).
+		QueryOne()
 
 	if err != nil {
 		t.Fatalf("Failed to query one item: %v", err)

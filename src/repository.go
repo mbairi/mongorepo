@@ -205,7 +205,7 @@ func (r *MongoRepository[T]) CountAll() (int64, error) {
 	return count, nil
 }
 
-func (r *MongoRepository[T]) Count(query Query) (int64, error) {
+func (r *MongoRepository[T]) Count(query *QueryBuilder[T]) (int64, error) {
 	count, err := r.collection.CountDocuments(query.context, query.filter)
 	if err != nil {
 		return 0, err
@@ -259,7 +259,7 @@ func (r *MongoRepository[T]) DeleteById(id primitive.ObjectID) error {
 	return err
 }
 
-func (r *MongoRepository[T]) Delete(query Query) (int64, error) {
+func (r *MongoRepository[T]) Delete(query *QueryBuilder[T]) (int64, error) {
 	res, err := r.collection.DeleteMany(query.context, query.filter)
 	if err != nil {
 		return 0, err
@@ -267,7 +267,7 @@ func (r *MongoRepository[T]) Delete(query Query) (int64, error) {
 	return res.DeletedCount, nil
 }
 
-func (r *MongoRepository[T]) QueryOne(query Query) (T, error) {
+func (r *MongoRepository[T]) QueryOne(query *QueryBuilder[T]) (T, error) {
 	var result T
 	findOptions := options.FindOne()
 	if query.projection != nil {
@@ -278,7 +278,7 @@ func (r *MongoRepository[T]) QueryOne(query Query) (T, error) {
 	return result, err
 }
 
-func (r *MongoRepository[T]) QueryMany(query Query) ([]T, error) {
+func (r *MongoRepository[T]) QueryMany(query *QueryBuilder[T]) ([]T, error) {
 	var results []T
 	findOptions := options.Find()
 	if query.sort != nil {
