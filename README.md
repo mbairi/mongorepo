@@ -1,5 +1,5 @@
 <p align="center">
-<img width="330" height="110" src="logo.svg" border="0" alt="kelindar/column"/> <br/>
+<img width="330" height="110" src="logo.svg" border="0" alt="mongorepo"/> <br/>
 <a><img src="https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo" alt="License"></a> 
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a> 
 </p>
@@ -68,53 +68,40 @@ Out of the box, these methods are provided by the library without any extra code
 | DeleteById | Deletes an object from collection matching \_id                 |
 | FindAll    | Fetches all documents from given collection                     |
 | ExistsById | Returns true if it finds an element with \_id                   |
-| Count      | Returns count of items present in collection                    |
+| CountAll   | Returns count of all items present in collection                |
 
 <br/>
 The id related functions rely on the `bson:"\_id" tag in the struct defined for your document
 <br/><br/>
 Save & SaveAll are *NOT* idempotent, the items provided are updated with id if inserted & returns the same
 
-### Classic query
-
-Synctactical sugar is provided to make it easy to build queries for majority of your usecases.
-qmodels.ClassicQuery provides 4 fields that are used to construct majority of the queries, as shown below.
+### Simple Queries
 
 ```go
-func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
-	queryConfig := qmodels.ClassicQuery{
-		Query:      bson.M{"age": bson.M{"$gte": age}},
-		Projection: bson.M{"name": 1},
-		Sort:       bson.D{bson.E{Key: "name", Value: 1}},
-		Pageable:   [2]int{page, limit},
-	}
-	return r.QueryMany(context.TODO(), queryConfig)
-}
-
-func (r *PersonRepository) FindByName(name string) ([]Person, error) {
-	queryConfig := qmodels.ClassicQuery{
-		Query:      bson.M{"name": name},
-	}
-	return r.QueryMany(context.TODO(), queryConfig)
-}
+	foundItems, err := personRepository.QueryRunner().
+		Filter(`{"age":{ "$gte": 30 }}`).
+		Sort(`[{age:1}]`).
+		QueryMany()
 ```
 
-### Simple query
+Chaining used to create the query
 
-Similar to classic query, for even more easier use you can directly provide the query in string format rather than using neste bson.Ms to construct the query. The n'th param is indicated using ?1 in the string.
+| Function   | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| Filter     | basic filter for the operation                                  |
+| Projection | sets the projection for the results                             |
+| Sort       | accepts the sort order of items                                 |
+| Pagination | accespts a [2]int{} with first number as page & second as limit |
+| Context    | Sets context for query, uses default TODO() if not present      |
 
-```go
-func (r *PersonRepository) FindByAgeGreaterThan(age, page, limit int) ([]Person, error) {
-	simpleConfig := qmodels.ClassicQuery{
-		Query:      `{ "age": { "$gte": ?1 }}`,
-		Projection: `{ "name": 1 }`,
-		Sort:       `[{ "name":1 }]`,
-		Pageable:   [2]int{page, limit},
-	}
-  queryConfig,_ := simpleConfig.ToQueryConfig(age)
-	return r.QueryMany(context.TODO(), queryConfig)
-}
-```
+End functions to execute the query
+
+| Function  | Description                                                     |
+| --------- | --------------------------------------------------------------- |
+| QueryOne  | basic filter for the operation                                  |
+| QueryMany | sets the projection for the results                             |
+| Count     | accepts the sort order of items                                 |
+| Delete    | accespts a [2]int{} with first number as page & second as limit |
 
 ### Aggregates
 
@@ -140,7 +127,6 @@ func (r *PersonRepository) GroupByAge() {
 	results, err := r.AggregateMultiple(context.TODO(), pipeline)
 	fmt.Println(results, err)
 }
-
 ```
 
 Aggregation with single record as result:
