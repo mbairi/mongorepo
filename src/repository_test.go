@@ -57,6 +57,14 @@ func TestSave(t *testing.T) {
 	if updatedItem.Name != "Jane Doe" {
 		t.Fatalf("Expected updated name to be 'Jane Doe', got '%s'", updatedItem.Name)
 	}
+
+	count, err := repo.CountAll()
+	if err != nil {
+		t.Fatalf("Failed to get count of items after saving: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("Expected db count to be 1 got %d", count)
+	}
 }
 
 func TestFindById(t *testing.T) {
