@@ -14,7 +14,7 @@
 go get github.com/mbairi/mongorepo
 ```
 
-### Getting started
+### Quick start
 
 The repository for a document of your choice is created by embedding repo.MongoRepository that we provide using generics. When writing your constructor for the repository, instantiate it for that document type with the collection & embed it.
 
@@ -78,30 +78,41 @@ Save & SaveAll are *NOT* idempotent, the items provided are updated with id if i
 ### Simple Queries
 
 ```go
-	foundItems, err := personRepository.QueryRunner().
-		Filter(`{"age":{ "$gte": 30 }}`).
-		Sort(`[{age:1}]`).
-		QueryMany()
+persons, err := personRepository.QueryRunner().
+	Filter(`{"age":{ "$gte": ?1 }}`, person.Age).
+	Projection(`{"name":1}`).
+	Sort(`[{age:1}]`).
+	Pagination([2]{0,5}).
+	QueryMany()
+
+
+person, err := personRepository.QueryRunner().
+	Filter(`{"name": ?1}`, person.Name).
+	QueryOne()
+
+deletedCount, err := personRepository.QueryRunner().
+	Filter(`{"name":?1}`, person.Name).
+	Delete()
 ```
 
 Chaining used to create the query
 
-| Function   | Description                                                     |
-| ---------- | --------------------------------------------------------------- |
-| Filter     | basic filter for the operation                                  |
-| Projection | sets the projection for the results                             |
-| Sort       | accepts the sort order of items                                 |
-| Pagination | accespts a [2]int{} with first number as page & second as limit |
-| Context    | Sets context for query, uses default TODO() if not present      |
+| Function   | Description                                                        |
+| ---------- | ------------------------------------------------------------------ |
+| Filter     | basic filter for the operation, accepts params after filter string |
+| Projection | sets the projection for the results                                |
+| Sort       | accepts the sort order of items                                    |
+| Pagination | accespts a [2]int{} with first number as page & second as limit    |
+| Context    | Sets context for query, uses default TODO() if not present         |
 
 End functions to execute the query
 
-| Function  | Description                                                     |
-| --------- | --------------------------------------------------------------- |
-| QueryOne  | basic filter for the operation                                  |
-| QueryMany | sets the projection for the results                             |
-| Count     | accepts the sort order of items                                 |
-| Delete    | accespts a [2]int{} with first number as page & second as limit |
+| Function  | Description                                   |
+| --------- | --------------------------------------------- |
+| QueryOne  | returns a single item that matches the query  |
+| QueryMany | returns array of items that matches the query |
+| Count     | returns                                       |
+| Delete    | returns count of deletions                    |
 
 ### Aggregates
 
