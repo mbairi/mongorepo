@@ -108,13 +108,17 @@ func (q *QueryBuilder[T]) ConstructQuery(params ...interface{}) (Query, error) {
 	}
 
 	if q.sort != "" {
-		var sortMap map[string]interface{}
+		var sortMap []map[string]int
 		err := json.Unmarshal([]byte(q.sort), &sortMap)
 		if err != nil {
 			return Query{}, fmt.Errorf("error parsing sort: %w", err)
 		}
-		for k, v := range sortMap {
-			classic.sort = append(classic.sort, bson.E{Key: k, Value: v})
+
+		classic.sort = bson.D{}
+		for _, m := range sortMap {
+			for k, v := range m {
+				classic.sort = append(classic.sort, bson.E{Key: k, Value: v})
+			}
 		}
 	}
 

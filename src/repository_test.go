@@ -160,7 +160,7 @@ func TestQueryMany(t *testing.T) {
 
 	foundItems, err := repo.QueryRunner().
 		Filter(`{"age":{ "$gte": 30 }}`).
-		Sort(`[{age:1}]`).
+		Sort(`[{"age":1}]`).
 		QueryMany()
 
 	if err != nil {
