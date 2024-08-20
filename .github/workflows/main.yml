@@ -4,6 +4,16 @@ jobs:
   test:
     name: Test with Coverage
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:latest
+        ports:
+          - 27017:27017
+        options: >
+          --health-cmd="mongo --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -14,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: |
           go mod download
+      - name: Wait for MongoDB to be ready
+        run: |
+          until mongo --eval "print(\"waited for connection\")"; do sleep 1; done
       - name: Run Unit tests
         run: |
           go test -race -covermode atomic -coverprofile=covprofile ./...
