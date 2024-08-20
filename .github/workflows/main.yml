@@ -9,10 +9,11 @@ jobs:
         image: mongo:latest
         ports:
           - 27017:27017
-        options: >
-          --health-cmd="mongo --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval=10s
-          --health-timeout=5s
+        options: >-
+          --health-cmd mongosh --eval "db.runCommand({ ping: 1 })"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -21,15 +22,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Install dependencies
-        run: |
-          go mod download
-      - name: Wait for MongoDB to be ready
-        run: |
-          until mongo --eval "db.runCommand({ ping: 1 })"; do sleep 1; done
+        run: go mod download
       - name: Run Unit tests
-        run: |
-          go test -race -covermode atomic -coverprofile=covprofile ./...
+        run: go test -race -covermode atomic -coverprofile=covprofile ./...
       - name: Install goveralls
         run: go install github.com/mattn/goveralls@latest
       - name: Send coverage
+        env:
+          COVERALLS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: goveralls -coverprofile=covprofile -service=github
