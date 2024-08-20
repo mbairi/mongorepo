@@ -163,20 +163,38 @@ func (r *PersonRepository) AvgAge() {
 
 ```go
 type Person struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Name        string             `bson:"name" index:"1, unique"`
-	Age         int                `bson:"age" index:"-1"`
-	Email 			string             `bson:"email" index:"text"`
+	ID        primitive.ObjectID `bson:"_id,omitempty""`
+	Name      string             `bson:"name" index:"1, unique"`
+	Age       int                `bson:"age" index:"-1, text"`
+	CreatedAt time.Time          `bson:"created_at" index:"1, sparse"`
 }
 ```
+
+Index types & modifiers can be used in junction in same line of tag. For more information on which to use where, goto [Mongo Docs](https://www.mongodb.com/docs/manual/core/indexes/index-types/)
+
+Types
+
+| Type     | Description             |
+| -------- | ----------------------- |
+| 1        | ascending               |
+| -1       | descending              |
+| 2dsphere | for geolocation         |
+| text     | for text search indexes |
+
+Modifiers
+
+| Modifier | Description |
+| -------- | ----------- |
+| unique   | ascending   |
+| sparse   | descending  |
 
 ### Compound indexes
 
 ```go
 type Person struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" cindex:"{age:1,name:-1};{age:1,email:1}"`
-	Name        string             `bson:"name"`
-	Age         int                `bson:"age"`
-	Email 			string             `bson:"email" `
+	ID        primitive.ObjectID `bson:"_id,omitempty" cindex:"{name:1,age:1};{age:1,created_at:1}"`
+	Name      string             `bson:"name"`
+	Age       int                `bson:"age"`
+	CreatedAt time.Time          `bson:"created_at"`
 }
 ```
