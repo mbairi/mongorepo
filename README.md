@@ -1,5 +1,5 @@
 <p align="center">
-<img width="330" height="110" src="logo.svg" border="0" alt="mongorepo"/> <br/>
+<img width="330" height="110" src=".github/logo.svg" border="0" alt="mongorepo"/> <br/>
 <a><img src="https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo" alt="License"></a> 
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a> 
 </p>
@@ -47,8 +47,8 @@ func main() {
 
 	// save the person & fetch from database with updated ID just to test
 	person := Person{Name: "Nitin", Email: "nitin.does.not.exist@gmail.com", Age: 26}
-	savedPerson, _ := personRepository.Save(context.TODO(), person) // returns with updated ID ( input is NOT idempotent )
-	foundPerson, _ := personRepository.FindById(context.TODO(), savedPerson.ID)
+	savedPerson, _ := personRepository.Save(person) // returns with updated ID ( input is NOT idempotent )
+	foundPerson, _ := personRepository.FindById(savedPerson.ID)
 
 	fmt.Println(foundPerson)
 }
@@ -84,7 +84,6 @@ persons, err := personRepository.QueryRunner().
 	Sort(`[{age:1}]`).
 	Pagination([2]{0,5}).
 	QueryMany()
-
 
 person, err := personRepository.QueryRunner().
 	Filter(`{"name": ?1}`, person.Name).
@@ -169,8 +168,6 @@ type Person struct {
 	Email 			string             `bson:"email" index:"text"`
 }
 ```
-
-## Extras
 
 ### Compound indexes
 
