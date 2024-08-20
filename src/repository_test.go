@@ -85,6 +85,52 @@ func TestFindById(t *testing.T) {
 	}
 }
 
+func TestFindByIds(t *testing.T) {
+	repo := setupTestRepo(t)
+	items := []TestModel{
+		{Name: "User 1", Age: 25, CreatedAt: time.Now()},
+		{Name: "User 2", Age: 30, CreatedAt: time.Now()},
+		{Name: "User 3", Age: 35, CreatedAt: time.Now()},
+	}
+
+	savedItems, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Faild to save items: %v", err)
+	}
+
+	ids := []primitive.ObjectID{savedItems[0].ID, savedItems[1].ID}
+
+	foundItems, err := repo.FindByIds(ids)
+	if err != nil {
+		t.Fatalf("Failed to find all items: %v", err)
+	}
+	if len(foundItems) != 2 {
+		t.Fatalf("Expected to find 2 items, but found %d", len(foundItems))
+	}
+}
+
+func CountAll(t *testing.T) {
+	repo := setupTestRepo(t)
+	items := []TestModel{
+		{Name: "User 1", Age: 25, CreatedAt: time.Now()},
+		{Name: "User 2", Age: 30, CreatedAt: time.Now()},
+		{Name: "User 3", Age: 35, CreatedAt: time.Now()},
+	}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Faild to save items: %v", err)
+	}
+
+	count, err := repo.CountAll()
+	if err != nil {
+		t.Fatalf("Failed to find all items: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("Expected to count 3 items, but found %d", count)
+	}
+}
+
 func TestFindAll(t *testing.T) {
 	repo := setupTestRepo(t)
 	items := []TestModel{
@@ -92,11 +138,10 @@ func TestFindAll(t *testing.T) {
 		{Name: "User 2", Age: 30, CreatedAt: time.Now()},
 		{Name: "User 3", Age: 35, CreatedAt: time.Now()},
 	}
-	for _, item := range items {
-		_, err := repo.Save(item)
-		if err != nil {
-			t.Fatalf("Failed to save test item: %v", err)
-		}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Faield to save items: %v", err)
 	}
 
 	foundItems, err := repo.FindAll()
@@ -105,6 +150,29 @@ func TestFindAll(t *testing.T) {
 	}
 	if len(foundItems) != len(items) {
 		t.Fatalf("Expected to find %d items, but found %d", len(items), len(foundItems))
+	}
+}
+
+func TestExistsById(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	newItem := TestModel{Name: "John Doe", Age: 30, CreatedAt: time.Now()}
+	savedItem, err := repo.Save(newItem)
+	if err != nil {
+		t.Fatalf("Failed to save new item: %v", err)
+	}
+	if savedItem.ID.IsZero() {
+		t.Fatalf("Expected non-zero ID for saved item")
+	}
+
+	exists, err := repo.ExistsById(savedItem.ID)
+
+	if err != nil {
+		t.Fatalf("Failed to check if item exists: %v", err)
+	}
+
+	if !exists {
+		t.Fatalf("Expected to find existing element")
 	}
 }
 

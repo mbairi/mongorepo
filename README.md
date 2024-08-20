@@ -2,6 +2,7 @@
 <img width="330" height="110" src=".github/logo.svg" border="0" alt="mongorepo"/> <br/>
 <a><img src="https://img.shields.io/github/go-mod/go-version/mbairi/mongorepo" alt="License"></a> 
 <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a> 
+<a href='https://coveralls.io/github/mbairi/mongorepo?branch=main'><img src='https://coveralls.io/repos/github/mbairi/mongorepo/badge.svg?branch=main' alt='Coverage Status' /></a>
 </p>
 
 <p align = "center">A Go library inspired by Spring's MongoRepository, reducing boilerplate and speeding up development by providing common MongoDB operations out of the box. </p>
