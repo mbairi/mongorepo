@@ -13,9 +13,9 @@ import (
 
 type TestModel struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" cindex:"{name:1,age:1};{age:1,created_at:1}"`
-	Name      string             `bson:"name" index:"1"`
-	Age       int                `bson:"age"`
-	CreatedAt time.Time          `bson:"created_at"`
+	Name      string             `bson:"name" index:"1, unique"`
+	Age       int                `bson:"age" index:"-1, text"`
+	CreatedAt time.Time          `bson:"created_at" index:"1, sparse"`
 }
 
 func setupTestRepo(t *testing.T) *MongoRepository[TestModel] {
@@ -209,6 +209,7 @@ func TestQueryOne(t *testing.T) {
 
 	foundItem, err := repo.QueryRunner().
 		Filter(`{"name":?1}`, newItem.Name).
+		Context(context.TODO()).
 		QueryOne()
 
 	if err != nil {
@@ -226,6 +227,7 @@ func TestQueryMany(t *testing.T) {
 		{Name: "Query Many 1", Age: 25, CreatedAt: time.Now()},
 		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
 		{Name: "Query Many 3", Age: 35, CreatedAt: time.Now()},
+		{Name: "Query Many 4", Age: 40, CreatedAt: time.Now()},
 	}
 
 	_, err := repo.SaveAll(items)
@@ -238,6 +240,51 @@ func TestQueryMany(t *testing.T) {
 		Filter(`{"age":{ "$gte": ?1 }}`, filterAge).
 		Sort(`[{"age":1}]`).
 		Projection(`{"name":1, "age":1}`).
+		Pageable([2]int{0, 2}).
+		QueryMany()
+
+	if err != nil {
+		t.Fatalf("Failed to query many items: %v", err)
+	}
+	if len(foundItems) != 2 {
+		t.Fatalf("Expected to find 2 items, but found %d", len(foundItems))
+	}
+	if foundItems[0].Age != 30 || foundItems[1].Age != 35 {
+		t.Fatalf("Query results do not match expected values")
+	}
+	if !foundItems[0].CreatedAt.IsZero() {
+		t.Fatalf("Expected createdAt to be zero from projection, but found %s", foundItems[0].CreatedAt)
+	}
+}
+
+func TestQueryManyB(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	items := []TestModel{
+		{Name: "Query Many 1", Age: 25, CreatedAt: time.Now()},
+		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
+		{Name: "Query Many 3", Age: 35, CreatedAt: time.Now()},
+		{Name: "Query Many 4", Age: 40, CreatedAt: time.Now()},
+	}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Failed to save multiple items: %v", err)
+	}
+
+	filterAge := 30
+	foundItems, err := repo.QueryRunner().
+		FilterB(bson.M{
+			"age": bson.M{
+				"$gte": filterAge,
+			},
+		}).
+		SortB(bson.D{{Key: "age", Value: 1}}).
+		ProjectionB(bson.M{
+			"name": 1,
+			"age":  1,
+		}).
+		Pageable([2]int{0, 2}).
 		QueryMany()
 
 	if err != nil {

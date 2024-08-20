@@ -76,6 +76,7 @@ func (r *MongoRepository[T]) ensureSimpleIndexes() error {
 			var indexType interface{}
 			indexOptions := options.IndexOptions{}
 			for _, splitTag := range splitTags {
+				splitTag = strings.TrimSpace(splitTag)
 				switch splitTag {
 				case "unique":
 					indexOptions.SetUnique(true)
