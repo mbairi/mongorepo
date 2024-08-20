@@ -227,16 +227,17 @@ func TestQueryMany(t *testing.T) {
 		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
 		{Name: "Query Many 3", Age: 35, CreatedAt: time.Now()},
 	}
-	for _, item := range items {
-		_, err := repo.Save(item)
-		if err != nil {
-			t.Fatalf("Failed to save test item: %v", err)
-		}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Failed to save multiple items: %v", err)
 	}
 
+	filterAge := 30
 	foundItems, err := repo.QueryRunner().
-		Filter(`{"age":{ "$gte": 30 }}`).
+		Filter(`{"age":{ "$gte": ?1 }}`, filterAge).
 		Sort(`[{"age":1}]`).
+		Projection(`{"name":1, "age":1}`).
 		QueryMany()
 
 	if err != nil {
@@ -247,6 +248,66 @@ func TestQueryMany(t *testing.T) {
 	}
 	if foundItems[0].Age != 30 || foundItems[1].Age != 35 {
 		t.Fatalf("Query results do not match expected values")
+	}
+	if !foundItems[0].CreatedAt.IsZero() {
+		t.Fatalf("Expected createdAt to be zero from projection, but found %s", foundItems[0].CreatedAt)
+	}
+}
+
+func TestCount(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	items := []TestModel{
+		{Name: "Query Many 1", Age: 25, CreatedAt: time.Now()},
+		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
+		{Name: "Query Many 3", Age: 35, CreatedAt: time.Now()},
+	}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Failed to save multiple items: %v", err)
+	}
+
+	count, err := repo.QueryRunner().
+		Filter(`{"age":{ "$gte": 30 }}`).
+		Count()
+
+	if err != nil {
+		t.Fatalf("Failed to query many items: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("Expected to find 2 items, but found %d", count)
+	}
+}
+
+func TestDelete(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	items := []TestModel{
+		{Name: "Query Many 1", Age: 25, CreatedAt: time.Now()},
+		{Name: "Query Many 2", Age: 30, CreatedAt: time.Now()},
+		{Name: "Query Many 3", Age: 35, CreatedAt: time.Now()},
+	}
+
+	_, err := repo.SaveAll(items)
+	if err != nil {
+		t.Fatalf("Failed to save multiple items: %v", err)
+	}
+
+	count, err := repo.QueryRunner().
+		Filter(`{"age":{ "$gte": 30 }}`).
+		Delete()
+
+	if err != nil {
+		t.Fatalf("Failed to query many items: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("Expected to find 2 items, but found %d", count)
+	}
+
+	remCount, err := repo.CountAll()
+	if remCount != 1 {
+		t.Fatalf("Expected to find 1 item remaining in repo, but found %d", remCount)
 	}
 }
 
